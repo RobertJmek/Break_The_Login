@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <title>Deskly - Alege Parolă Nouă</title>
+</head>
+
+<body style="font-family: Arial; padding: 50px;">
+    <h2>Setați o nouă parolă</h2>
+    <form action="/reset" method="POST">
+        <input type="hidden" name="token" value="{{ token }}">
+
+        <label>Parolă nouă:</label><br><br>
+        <input type="password" name="new_password" required><br><br>
+        <button type="submit">Schimbă Parola</button>
+    </form>
+</body>
+
+</html>

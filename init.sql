@@ -29,7 +29,7 @@ CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     action audit_action NOT NULL,
-    resource resource_type NOT NULL,
+    resource resource_type,
     resource_id INTEGER,
     timestamp TIMESTAMP DEFAULT NOW(),
     ip_address INET
