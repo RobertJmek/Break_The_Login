@@ -1,47 +1,82 @@
 import os
-# AM ADĂUGAT render_template la importuri
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from dotenv import load_dotenv
-from database import get_db_connection
+
+# Importuri din layer-ele aplicației
+from data.database import get_db_connection
+from security.authn import AuthService  # AuthN e in Security Controls in diagrama
+from services.ticket_service import TicketService
+from services.audit_service import AuditService
+from security.authz import login_required, manager_required
+from security.error_handling import register_error_handlers
 
 load_dotenv()
 
+# Nivelul Backend API
+
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "cheie_de_rezerva_nesigura")
+
+# Security Controls: Session Mgmt
+
+secret_key = os.getenv("FLASK_SECRET_KEY")
+if not secret_key:
+    raise ValueError("CRITICAL: FLASK_SECRET_KEY is missing from environment variables!")
+app.secret_key = secret_key
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True, # Ar trebui activat in productie (HTTPS)
+    SESSION_COOKIE_SAMESITE='Lax',
+)
 
 @app.route('/', methods=['GET'])
-def health_check():
-    try:
-        conn = get_db_connection()
-        conn.close()
-        db_status = "Conexiunea cu baza de date a reușit!"
-    except Exception as e:
-        db_status = f"Eroare la conectarea DB: {str(e)}"
-        
-    return jsonify({
-        "status": "Deskly API v1 (Vulnerable) este online!",
-        "database_status": db_status
-    }), 200
+def main_page():
+    return render_template('index.html')
 
-# RUTA NOUĂ PENTRU ÎNREGISTRARE
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # Dacă utilizatorul doar accesează pagina (GET), îi arătăm formularul HTML
-    if request.method == 'GET':
-        return render_template('register.html')
-    
-    # Dacă a apăsat butonul de submit (POST), preluăm datele
-    if request.method == 'POST':
-        # În formularele HTML clasice, datele vin prin request.form, nu prin request.json
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        # Deocamdată doar returnăm un mesaj ca să confirmăm că a mers
-        return jsonify({
-            "message": "Formular interceptat cu succes!",
-            "email_primit": email,
-            "parola_primita": password
-        })
+    # Afișează formularul (GET) și procesează înregistrarea (POST)
+    pass
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Afișează formularul (GET) și procesează autentificarea (POST)
+    pass
+
+@app.route('/forgot', methods=['GET', 'POST'])
+def forgot_password():
+    # Generează și afișează token de resetare
+    pass
+
+@app.route('/reset', methods=['GET', 'POST'])
+def reset_password():
+    # Preia token din URL (GET) și actualizează parola (POST)
+    pass
+
+@app.route('/ticket', methods=['GET', 'POST'])
+@login_required
+def create_ticket():
+    # Afișează formularul (GET) și inserează tichet nou (POST)
+    pass
+
+@app.route('/ticket/<int:ticket_id>', methods=['GET'])
+@login_required
+def view_ticket(ticket_id):
+    # Returnează detaliile unui tichet
+    pass
+
+@app.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    # Șterge cookie-ul de autentificare
+    session.clear()
+    return jsonify({"message": "Logged out"}), 200
+
+@app.route('/audit', methods=['GET'])
+@login_required
+@manager_required
+def audit_logs():
+    # Funcționalitate specifică managerului pentru audit_logs
+    pass
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
