@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Audit Logs</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User ID</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>IP Address</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+            <tr>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.user_id }}</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.resource }} (ID: {{ log.resource_id }})</td>
+                <td>{{ log.ip_address }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">No audit logs found.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

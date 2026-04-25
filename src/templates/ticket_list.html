@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Tickets</h1>
+    
+    <h3>Create Ticket</h3>
+    <form action="/ticket" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Title: <input type="text" name="title" required></label><br>
+        <label>Description: <textarea name="description" required></textarea></label><br>
+        <label>Priority: 
+            <select name="priority">
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+            </select>
+        </label><br>
+        <button type="submit">Create Ticket</button>
+    </form>
+
+    <hr>
+    <h3>Your Tickets</h3>
+    <ul>
+    {% for ticket in tickets %}
+        <li><a href="/ticket/{{ ticket.id }}">{{ ticket.title }} ({{ ticket.status }})</a></li>
+    {% else %}
+        <li>No tickets found.</li>
+    {% endfor %}
+    </ul>
+{% endblock %}

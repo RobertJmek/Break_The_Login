@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Forgot Password</h1>
+    <form action="/forgot" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Email: <input type="email" name="email" required></label><br>
+        <button type="submit">Send Reset Link</button>
+    </form>
+{% endblock %}

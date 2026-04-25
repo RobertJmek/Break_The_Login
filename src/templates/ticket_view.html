@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Ticket: {{ ticket.title }}</h1>
+    <p><strong>Description:</strong> {{ ticket.description }}</p>
+    <p><strong>Priority:</strong> {{ ticket.priority }}</p>
+    <p><strong>Status:</strong> {{ ticket.status }}</p>
+    <p><strong>Owner ID:</strong> {{ ticket.owner_id }}</p>
+    <p><strong>Created At:</strong> {{ ticket.created_at }}</p>
+
+    {% if session.get('role') == 'MANAGER' %}
+    <hr>
+    <h3>Update Status (Manager Only)</h3>
+    <form action="/ticket/{{ ticket.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Status:
+            <select name="status">
+                <option value="OPEN" {% if ticket.status == 'OPEN' %}selected{% endif %}>OPEN</option>
+                <option value="IN_PROGRESS" {% if ticket.status == 'IN_PROGRESS' %}selected{% endif %}>IN_PROGRESS</option>
+                <option value="RESOLVED" {% if ticket.status == 'RESOLVED' %}selected{% endif %}>RESOLVED</option>
+            </select>
+        </label>
+        <button type="submit">Update</button>
+    </form>
+    {% endif %}
+{% endblock %}

@@ -1,19 +1,16 @@
 from data.user_repo import UserRepo
 from data.audit_repo import AuditRepo
 from security.validation import InputValidation
+from security.exceptions import AppValidationError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import secrets
 
-# Instanțierea Argon2 cu parametri siguri (cei impliciți din argon2-cffi sunt la standarde moderne)
 ph = PasswordHasher()
 
 # Generăm un hash dummy la pornirea serverului pentru a-l folosi la mitigarea Timing Attacks
-
 PAROLA_RANDOM = secrets.token_hex(8)
 DUMMY_HASH = ph.hash(PAROLA_RANDOM)
-
-ph = PasswordHasher()
 
 class AuthService:
     """Security Control: AuthN, Logica securizată de login/register."""
@@ -31,6 +28,7 @@ class AuthService:
         password_hash = ph.hash(plain_password)
         
         # 3. Salvare (user_repo prinde erorile de tip UniqueViolation)
+
         user_id = UserRepo.create_user(email, password_hash)
         return user_id
         
@@ -42,18 +40,17 @@ class AuthService:
         # Prevenim 'Email Enumeration' și Timing Attacks la bază: 
         # Răspundem cu același mesaj generic și dacă nu există user-ul, și dacă parola e greșită.
         if not user:
-            # Pentru că AM PUS DEJA Rate Limiting în app.py, riscul de DoS prin CPU Exhaustion a dispărut!
             # Acum PUTEM și TREBUIE să folosim un dummy_hash pentru a balansa timpul de execuție perfect.
             try:
                 ph.verify(DUMMY_HASH, plain_password)
             except VerifyMismatchError:
                 pass
-            raise ValueError("Credențiale invalide.")
+            raise AppValidationError("Credențiale invalide.")
             
         # 2. Verificăm dacă contul a fost blocat (Anti Brute-Force)
         if user["locked"]:
             # Pentru siguranță absolută, returnăm același mesaj generic să nu confirmăm existența contului
-            raise ValueError("Credențiale invalide.")
+            raise AppValidationError("Credențiale invalide.")
             
         try:
             # 3. Verificarea parolei (comparare constant-time)
@@ -69,4 +66,10 @@ class AuthService:
         except VerifyMismatchError:
             # Aici am putea înregistra logica de incrementare a încercărilor eșuate
             # și să chemăm UserRepo.update_locked_status(user["id"], True) dacă depășește pragul.
-            raise ValueError("Credențiale invalide.")
+            raise AppValidationError("Credențiale invalide.")
+
+    @staticmethod
+    def update_password(user_id, new_password):
+        InputValidation.validate_password_complexity(new_password)
+        new_hash = ph.hash(new_password)
+        UserRepo.update_password(user_id, new_hash)

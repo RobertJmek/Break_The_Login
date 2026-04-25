@@ -1,6 +1,7 @@
 from contextlib import closing
 from psycopg2.errors import UniqueViolation, InvalidTextRepresentation
 from data.database import get_db_connection
+from security.exceptions import AppValidationError
 
 class UserRepo:
     """Nivelul Data Layer (Baza de date): Manipulare tabela users."""
@@ -15,7 +16,7 @@ class UserRepo:
                         cursor.execute(query, (email, password_hash))
                         return cursor.fetchone()[0]
         except UniqueViolation:
-            raise ValueError("Acest email este deja înregistrat.")
+            raise AppValidationError("Acest email este deja înregistrat.")
         
     @staticmethod
     def get_user_by_email(email):
@@ -60,7 +61,7 @@ class UserRepo:
                         query = "UPDATE users SET email = %s WHERE id = %s;"
                         cursor.execute(query, (email, user_id))
         except UniqueViolation:
-            raise ValueError("Acest email este deja înregistrat.")
+            raise AppValidationError("Acest email este deja înregistrat.")
 
     @staticmethod
     def update_role(user_id, role):
@@ -71,6 +72,6 @@ class UserRepo:
                         query = "UPDATE users SET role = %s WHERE id = %s;"
                         cursor.execute(query, (role, user_id))
         except InvalidTextRepresentation:
-            raise ValueError("Rolul specificat este invalid. Rolurile permise sunt: USER, ANALYST, MANAGER.")
+            raise AppValidationError("Rolul specificat este invalid. Rolurile permise sunt: USER, ANALYST, MANAGER.")
                     
     

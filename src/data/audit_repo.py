@@ -1,6 +1,7 @@
 from contextlib import closing
 from psycopg2.errors import ForeignKeyViolation, InvalidTextRepresentation
 from data.database import get_db_connection
+from security.exceptions import AppValidationError
 
 class AuditRepo:
     """Nivelul Data Layer (Baza de date): Manipulare tabela audit_logs."""
@@ -18,9 +19,9 @@ class AuditRepo:
                         cursor.execute(query, (user_id, action, resource, resource_id, ip_address))
                         return cursor.fetchone()[0]
         except ForeignKeyViolation:
-            raise ValueError("Utilizatorul specificat (user_id) nu există în DB.")
+            raise AppValidationError("Utilizatorul specificat (user_id) nu există în DB.")
         except InvalidTextRepresentation:
-            raise ValueError("Acțiune sau resursă invalidă. Verifică ENUM-urile.")
+            raise AppValidationError("Acțiune sau resursă invalidă. Verifică ENUM-urile.")
 
     @staticmethod
     def get_all_logs():

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Set New Password</h1>
+    <form action="/reset/{{ token }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>New Password: <input type="password" name="password" required></label><br>
+        <button type="submit">Update Password</button>
+    </form>
+{% endblock %}

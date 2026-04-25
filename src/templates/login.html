@@ -1,10 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
-    <h1>Register</h1>
-    <form action="/register" method="POST">
+    <h1>Login</h1>
+    <form action="/login" method="POST">
+        <!-- Protectie CSRF obligatorie -->
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>Email: <input type="email" name="email" required></label><br>
         <label>Password: <input type="password" name="password" required></label><br>
-        <button type="submit">Register</button>
+        <button type="submit">Login</button>
     </form>
+    <a href="/forgot">Forgot Password?</a>
 {% endblock %}

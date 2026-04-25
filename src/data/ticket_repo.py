@@ -1,6 +1,7 @@
 from contextlib import closing
 from psycopg2.errors import ForeignKeyViolation, InvalidTextRepresentation
 from data.database import get_db_connection
+from security.exceptions import AppValidationError
 
 class TicketRepo:
     """Nivelul Data Layer (Baza de date): Manipulare tabela tickets."""
@@ -19,9 +20,9 @@ class TicketRepo:
                         cursor.execute(query, (title, description, owner_id, priority))
                         return cursor.fetchone()[0]
         except ForeignKeyViolation:
-            raise ValueError("Utilizatorul specificat (owner) nu există.")
+            raise AppValidationError("Utilizatorul specificat (owner) nu există.")
         except InvalidTextRepresentation:
-            raise ValueError("Prioritate invalidă. Valorile permise sunt: LOW, MEDIUM, HIGH.")
+            raise AppValidationError("Prioritate invalidă. Valorile permise sunt: LOW, MEDIUM, HIGH.")
         
     @staticmethod
     def get_ticket_by_id(ticket_id):
@@ -81,4 +82,4 @@ class TicketRepo:
                         query = "UPDATE tickets SET status = %s, updated_at = NOW() WHERE id = %s;"
                         cursor.execute(query, (status, ticket_id))
         except InvalidTextRepresentation:
-            raise ValueError("Status invalid. Valorile permise sunt: OPEN, IN_PROGRESS, RESOLVED.")
+            raise AppValidationError("Status invalid. Valorile permise sunt: OPEN, IN_PROGRESS, RESOLVED.")

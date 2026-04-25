@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deskly Security</title>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        {% if session.get('user_id') %}
+            <a href="/ticket">Tickets</a>
+            {% if session.get('role') == 'MANAGER' %}
+                <a href="/audit">Audit Logs</a>
+            {% endif %}
+            <!-- CSRF Protection applied to Logout (POST) -->
+            <form action="/logout" method="POST" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Logout</button>
+            </form>
+        {% else %}
+            <a href="/login">Login</a> | <a href="/register">Register</a>
+        {% endif %}
+    </nav>
+    <hr>
+    
+    <!-- Flash Messages (errors/success) -->
+    <div id="messages"></div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
