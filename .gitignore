@@ -4,4 +4,4 @@
 __pycache__
 .pyc
 .agents
-.seed_users.py
+seed_users.py
