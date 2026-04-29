@@ -5,15 +5,11 @@ class AuditService:
     """Business Module: Audit Viewer (Manager only)."""
     
     @staticmethod
-    def view_audit_logs(user_role):
+    def view_audit_logs(user_role, limit: int = 50, offset: int = 0):
         """
-        Extrage toate log-urile de audit pentru a fi afișate Managerului.
-        Orice filtrare, paginare sau formatare a datelor (Business Logic) 
-        va fi implementată aici înainte de a le trimite spre Backend API.
+        Extrage log-urile de audit paginate pentru a fi afișate Managerului.
         """
-
         if user_role != 'MANAGER':
             raise AppValidationError("Acces respins la loguri. Doar un manager le poate vizualiza.")
-        
-        logs = AuditRepo.get_all_logs()
-        return logs
+
+        return AuditRepo.get_all_logs(limit=limit, offset=offset)

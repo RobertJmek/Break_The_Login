@@ -34,8 +34,14 @@ class OutputEncoding:
             elif isinstance(value, dict):
                 sanitized[key] = OutputEncoding.sanitize_dict(value)
             elif isinstance(value, list):
-                # Sanitizează listele de string-uri
-                sanitized[key] = [OutputEncoding.encode_text(item) if isinstance(item, str) else item for item in value]
+                # Recurse into dicts (e.g. list of ticket/log objects) and encode strings.
+                # Without the dict branch, every ticket in the ticket list was passed through raw.
+                sanitized[key] = [
+                    OutputEncoding.sanitize_dict(item) if isinstance(item, dict)
+                    else OutputEncoding.encode_text(item) if isinstance(item, str)
+                    else item
+                    for item in value
+                ]
             else:
                 sanitized[key] = value
                 

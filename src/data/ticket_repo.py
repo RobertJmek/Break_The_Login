@@ -45,30 +45,41 @@ class TicketRepo:
                 return None
         
     @staticmethod
-    def get_all_tickets():
+    def get_all_tickets(limit: int = 50, offset: int = 0):
         with closing(get_db_connection()) as conn:
             with conn.cursor() as cursor:
-                # Folosit de regulă de către MANAGER pentru a vedea toate tichetele
-                query = "SELECT id, title, description, status, priority, owner_id, created_at, updated_at FROM tickets ORDER BY created_at DESC;"
-                cursor.execute(query)
+                # Used by MANAGER to see all tickets — always paginated to prevent DoS
+                query = """
+                    SELECT id, title, description, status, priority, owner_id, created_at, updated_at
+                    FROM tickets
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s;
+                """
+                cursor.execute(query, (limit, offset))
                 rows = cursor.fetchall()
                 return [{
-                    "id": r[0], "title": r[1], "description": r[2], 
-                    "status": r[3], "priority": r[4], "owner_id": r[5], 
+                    "id": r[0], "title": r[1], "description": r[2],
+                    "status": r[3], "priority": r[4], "owner_id": r[5],
                     "created_at": r[6], "updated_at": r[7]
                 } for r in rows]
         
     @staticmethod
-    def get_tickets_by_owner(owner_id):
+    def get_tickets_by_owner(owner_id, limit: int = 50, offset: int = 0):
         with closing(get_db_connection()) as conn:
             with conn.cursor() as cursor:
-                # Folosit de ANALYST pentru a-și vedea exclusiv propriile tichete
-                query = "SELECT id, title, description, status, priority, owner_id, created_at, updated_at FROM tickets WHERE owner_id = %s ORDER BY created_at DESC;"
-                cursor.execute(query, (owner_id,))
+                # Used by ANALYST to see only their own tickets
+                query = """
+                    SELECT id, title, description, status, priority, owner_id, created_at, updated_at
+                    FROM tickets
+                    WHERE owner_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s;
+                """
+                cursor.execute(query, (owner_id, limit, offset))
                 rows = cursor.fetchall()
                 return [{
-                    "id": r[0], "title": r[1], "description": r[2], 
-                    "status": r[3], "priority": r[4], "owner_id": r[5], 
+                    "id": r[0], "title": r[1], "description": r[2],
+                    "status": r[3], "priority": r[4], "owner_id": r[5],
                     "created_at": r[6], "updated_at": r[7]
                 } for r in rows]
         

@@ -6,12 +6,16 @@ CREATE TYPE resource_type AS ENUM ('USER', 'TICKET');
 
 
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY, --Serial pentru generarea automata de id 
+    id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role user_role DEFAULT 'USER',
     created_at TIMESTAMP DEFAULT NOW(),
-    locked BOOLEAN DEFAULT FALSE
+    locked BOOLEAN DEFAULT FALSE,
+    -- Brute-force lockout: counts consecutive failures; resets on successful login.
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    -- Auto-expires after LOCKOUT_DURATION. NULL means not locked. Admin uses 'locked' for permanent bans.
+    locked_until TIMESTAMPTZ DEFAULT NULL
 );
 
 CREATE TABLE tickets (
@@ -35,4 +39,16 @@ CREATE TABLE audit_logs (
     ip_address INET
 );
 
+CREATE TABLE password_reset_tokens (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    -- SHA-256 hex digest of the raw token. Never store the raw token.
+    token_hash  CHAR(64)  NOT NULL UNIQUE,
+    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+    expires_at  TIMESTAMP NOT NULL,
+    used        BOOLEAN   NOT NULL DEFAULT FALSE,
+    used_at     TIMESTAMP           -- NULL until the token is consumed
+);
 
+CREATE INDEX idx_prt_token_hash ON password_reset_tokens (token_hash);
+CREATE INDEX idx_prt_user_id    ON password_reset_tokens (user_id);

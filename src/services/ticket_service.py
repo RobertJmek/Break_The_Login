@@ -14,6 +14,9 @@ class TicketService:
             
         if len(title) > 150:
             raise AppValidationError("Titlul este prea lung (maxim 150 de caractere).")
+
+        if len(description) > 5000:
+            raise AppValidationError("Descrierea este prea lungă (maxim 5000 de caractere).")
             
         # Whitelist (Lista albă) pentru prioritate - Prevenim Data Corruption
         if priority not in ['LOW', 'MEDIUM', 'HIGH']:
@@ -23,17 +26,17 @@ class TicketService:
         ticket_id = TicketRepo.create_ticket(title, description, user_id, priority)
         
         # 3. Security Audit Logging (Folosind Dependency Injection pentru IP)
-        log_security_event(user_id, "CREATE_TICKET", "Ticket", ticket_id, ip_address)
+        log_security_event(user_id, "CREATE", "TICKET", ticket_id, ip_address)
         
         return ticket_id
         
     @staticmethod
-    def get_user_tickets(user_id, role):
-        # 1. Logica de Business: Direcționare pe baza rolului
+    def get_user_tickets(user_id, role, limit: int = 50, offset: int = 0):
+        # Business Logic: route by role, always with pagination
         if role == 'MANAGER':
-            return TicketRepo.get_all_tickets()
+            return TicketRepo.get_all_tickets(limit=limit, offset=offset)
         elif role == 'ANALYST':
-            return TicketRepo.get_tickets_by_owner(user_id)
+            return TicketRepo.get_tickets_by_owner(user_id, limit=limit, offset=offset)
         else:
             raise AppValidationError("Nu ai permisiunea de a vizualiza tichete.")
         
@@ -59,4 +62,4 @@ class TicketService:
             raise AppValidationError("Status invalid.")
             
         TicketRepo.update_ticket_status(ticket_id, status)
-        log_security_event(user_id, "UPDATE", "Ticket", ticket_id, ip_address)
+        log_security_event(user_id, "UPDATE", "TICKET", ticket_id, ip_address)

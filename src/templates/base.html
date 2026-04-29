@@ -2,32 +2,201 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deskly Security</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #38bdf8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --info: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        nav {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        nav a:hover {
+            color: var(--accent);
+        }
+
+        nav button {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        nav button:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            min-width: 300px;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: slideIn 0.3s ease-out forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+        .toast.info { border-left: 4px solid var(--info); }
+
+        .toast-content {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            width: 100%;
+        }
+
+        .toast-progress-bar {
+            height: 100%;
+            background: currentColor;
+            width: 100%;
+            animation: progress 5s linear forwards;
+        }
+
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+    </style>
 </head>
 <body>
     <nav>
-        <a href="/">Home</a>
+        <a href="/" style="font-weight: 700; color: var(--text-main); margin-right: 1rem;">DESKLY</a>
+        <a href="/">Dashboard</a>
         {% if session.get('user_id') %}
             <a href="/ticket">Tickets</a>
             {% if session.get('role') == 'MANAGER' %}
                 <a href="/audit">Audit Logs</a>
             {% endif %}
-            <!-- CSRF Protection applied to Logout (POST) -->
-            <form action="/logout" method="POST" style="display:inline;">
+            <form action="/logout" method="POST" style="margin-left: auto;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Logout</button>
+                <button type="submit">Sign Out</button>
             </form>
         {% else %}
-            <a href="/login">Login</a> | <a href="/register">Register</a>
+            <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center;">
+                <a href="/login">Sign In</a>
+                <a href="/register" style="background: var(--accent); color: var(--bg-color); padding: 0.5rem 1.25rem; border-radius: 8px;">Get Started</a>
+            </div>
         {% endif %}
     </nav>
-    <hr>
-    
-    <!-- Flash Messages (errors/success) -->
-    <div id="messages"></div>
+
+    <!-- Global Toast Container -->
+    <div class="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast {{ category }}" role="alert">
+                  <div class="toast-content">{{ message }}</div>
+                  <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+                  <div class="toast-progress">
+                      <div class="toast-progress-bar" style="color: var(--{{ category if category != 'message' else 'info' }})"></div>
+                  </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
 
     <main>
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        // Auto-dismiss toasts after 5 seconds
+        document.querySelectorAll('.toast').forEach(toast => {
+            setTimeout(() => {
+                toast.style.transition = 'all 0.5s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        });
+    </script>
 </body>
 </html>

@@ -24,13 +24,22 @@ class AuditRepo:
             raise AppValidationError("Acțiune sau resursă invalidă. Verifică ENUM-urile.")
 
     @staticmethod
-    def get_all_logs():
+    def get_all_logs(limit: int = 50, offset: int = 0):
         with closing(get_db_connection()) as conn:
             with conn.cursor() as cursor:
-                query = "SELECT id, user_id, action, resource, resource_id, timestamp, ip_address FROM audit_logs ORDER BY timestamp DESC;"
-                cursor.execute(query)
+                query = """
+                    SELECT id, user_id, action, resource, resource_id, timestamp, ip_address
+                    FROM audit_logs
+                    ORDER BY timestamp DESC
+                    LIMIT %s OFFSET %s;
+                """
+                cursor.execute(query, (limit, offset))
                 rows = cursor.fetchall()
-                return [{"id": r[0], "user_id": r[1], "action": r[2], "resource": r[3], "resource_id": r[4], "timestamp": r[5], "ip_address": r[6]} for r in rows]
+                return [{
+                    "id": r[0], "user_id": r[1], "action": r[2],
+                    "resource": r[3], "resource_id": r[4],
+                    "timestamp": r[5], "ip_address": r[6]
+                } for r in rows]
 
     @staticmethod
     def get_audit_logs_by_user(user_id):
