@@ -107,6 +107,30 @@
         .toast.success { border-left: 4px solid var(--success); }
         .toast.error { border-left: 4px solid var(--error); }
         .toast.info { border-left: 4px solid var(--info); }
+        .toast.message { border-left: 4px solid var(--info); }
+
+        /* Demo-mode banner — amber, unmistakable, never shown in production */
+        .toast.demo {
+            border-left: 4px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .toast.demo .toast-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #f59e0b;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+        .toast.demo .toast-link {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #fbbf24;
+            word-break: break-all;
+            text-decoration: underline;
+        }
+        .toast.demo .toast-link:hover { color: #fff; }
 
         .toast-content {
             font-size: 0.875rem;
@@ -138,6 +162,13 @@
             width: 100%;
             animation: progress 5s linear forwards;
         }
+
+        /* Color mapping - avoids inline style logic that confuses linters */
+        .toast.success .toast-progress-bar { color: var(--success); }
+        .toast.error .toast-progress-bar { color: var(--error); }
+        .toast.info .toast-progress-bar { color: var(--info); }
+        .toast.message .toast-progress-bar { color: var(--info); }
+        .toast.demo .toast-progress-bar { color: #f59e0b; }
 
         @keyframes progress {
             from { width: 100%; }
@@ -171,13 +202,22 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
+              {% if category == 'demo' %}
+              <div class="toast demo" role="alert">
+                  <div class="toast-content">
+                      <span class="toast-label">🛠 Demo Mode — Reset Link</span>
+                      <a class="toast-link" href="{{ message }}">{{ message }}</a>
+                  </div>
+                  <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+                  <div class="toast-progress"><div class="toast-progress-bar"></div></div>
+              </div>
+              {% else %}
               <div class="toast {{ category }}" role="alert">
                   <div class="toast-content">{{ message }}</div>
                   <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
-                  <div class="toast-progress">
-                      <div class="toast-progress-bar" style="color: var(--{{ category if category != 'message' else 'info' }})"></div>
-                  </div>
+                  <div class="toast-progress"><div class="toast-progress-bar"></div></div>
               </div>
+              {% endif %}
             {% endfor %}
           {% endif %}
         {% endwith %}

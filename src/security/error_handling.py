@@ -1,28 +1,47 @@
 import logging
 import traceback
-from flask import jsonify, request
+from flask import flash, redirect, request, url_for
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 from security.exceptions import AppValidationError
 
-def register_error_handlers(app):
-    """Security Control: Error Handling (no stack traces to client)."""
-    
-    # 1. Prinde erorile noastre custom de validare (100% sigur de trimis catre client)
-    @app.errorhandler(AppValidationError)
-    def handle_value_error(error):
-        return jsonify(error.to_dict()), error.status_code
 
-    # 2. Prinde erorile HTTP Standard generate de Flask (ex: 405 Method Not Allowed, 404 Not Found)
+def register_error_handlers(app):
+    """Security Control: Error Handling — no stack traces, no raw JSON to browser clients."""
+
+    @app.errorhandler(AppValidationError)
+    def handle_validation_error(error):
+        """Erori de validare custom (email invalid, parolă slabă, etc.)"""
+        flash(error.message, "error")
+        # Redirect back to the page the user came from, fall back to home.
+        return redirect(request.referrer or url_for('main_page'))
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(error):
+        """Token CSRF lipsă sau invalid — sesiunea poate fi expirată."""
+        flash("Cerere invalidă sau sesiunea a expirat. Reîncercați.", "error")
+        return redirect(request.referrer or url_for('main_page'))
+
     @app.errorhandler(HTTPException)
     def handle_http_exception(error):
-        return jsonify({"error": error.description}), error.code
+        """Erori HTTP standard (401, 403, 404, 405, etc.)"""
+        if error.code == 401:
+            flash("Trebuie să fii autentificat pentru a accesa această pagină.", "error")
+            return redirect(url_for('login'))
+        if error.code == 403:
+            flash("Acces interzis. Nu ai permisiunea necesară.", "error")
+            return redirect(url_for('main_page'))
+        if error.code == 404:
+            flash("Pagina sau resursa căutată nu a fost găsită.", "error")
+            return redirect(url_for('main_page'))
+        # Any other HTTP error (405, 429, etc.)
+        flash(f"Eroare: {error.description}", "error")
+        return redirect(url_for('main_page'))
 
-    # 3. Prinde orice altă excepție și adaugă CONTEXT complet la logare
     @app.errorhandler(Exception)
     def internal_error(error):
-        # Logăm tehnic pe server cu context (Metoda și URL-ul unde a crăpat)
+        """Excepții neașteptate — logăm detalii pe server, mesaj generic către client."""
         logging.error(f"Eroare tehnică neașteptată la {request.method} {request.url}: {str(error)}")
         logging.error(traceback.format_exc())
-        
-        # Returnăm mereu un mesaj generic clientului
-        return jsonify({"error": "A apărut o eroare internă pe server. Contactați suportul."}), 500
+        flash("A apărut o eroare internă pe server. Contactați suportul.", "error")
+        return redirect(url_for('main_page'))

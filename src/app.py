@@ -1,6 +1,6 @@
 import os
 import time
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, flash, redirect, url_for
 from dotenv import load_dotenv
 
 # Importuri din layer-ele aplicației
@@ -41,6 +41,7 @@ init_rate_limiting(app)
 init_security_headers(app)
 
 from security.audit_logging import log_security_event
+from security.exceptions import AppValidationError
 from data.user_repo import UserRepo
 from data.token_repo import TokenRepo
 
@@ -73,14 +74,22 @@ def register():
     email = data.get('email')
     password = data.get('password')
     
-    # 1. Autentificare & Validare (Security Control)
-    user_id = AuthService.register_user(email, password)
-    
-    from flask import flash, redirect, url_for
-    # 2. Audit Logging
-    log_security_event(user_id, "CREATE", "USER", user_id, request.remote_addr)
-    
-    flash("Înregistrare reușită. Te poți autentifica.", "success")
+    try:
+        user_id = AuthService.register_user(email, password)
+        # Audit-log real account creations only
+        log_security_event(user_id, "CREATE", "USER", user_id, request.remote_addr)
+    except AppValidationError as e:
+        if "înregistrat" in e.message:
+            # Silently swallow "email already registered" — showing it would
+            # confirm whether an email exists in our DB (email enumeration).
+            # The generic message below is shown regardless, same as a real success.
+            pass
+        else:
+            # Password complexity, invalid email format, etc.
+            # These are safe to surface — they don't reveal account existence.
+            raise
+
+    flash("Dacă adresa de email nu era deja înregistrată, vei primi un email de confirmare.", "info")
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -109,9 +118,13 @@ def login():
     
     # 5. Audit Logging
     log_security_event(user['id'], "LOGIN", "USER", user['id'], request.remote_addr)
-    
-    flash(f"Bine ai revenit! Ești autentificat ca {user['role']}.", "success")
-    return redirect(url_for('ticket_management'))
+
+    role = user['role']
+    flash(f"Bine ai revenit! Ești autentificat ca {role}.", "success")
+    # USER role has no access to tickets — send them to the main page
+    if role in ('ANALYST', 'MANAGER'):
+        return redirect(url_for('ticket_management'))
+    return redirect(url_for('main_page'))
 
 @app.route('/logout', methods=['POST'])
 @login_required
@@ -142,15 +155,13 @@ def forgot_password():
         token = TokenRepo.generate_token()
         TokenRepo.store_token(user['id'], token)
         log_security_event(user['id'], "UPDATE", "USER", user['id'], request.remote_addr)
-        response = {"message": "Dacă email-ul există, s-a trimis un link."}
         if DEBUG:
-            response["mock_link"] = f"/reset/{token}"
-    else:
-        response = {"message": "Dacă email-ul există, s-a trimis un link."}
+            # Expus DOAR în modul demo/dev local. În producție (DEBUG=false) linkul
+            # se trimite exclusiv prin email — nu apare niciodată în UI.
+            flash(f"/reset/{token}", "demo")
 
     # Pad response time so both branches always take ≥ FORGOT_MIN_RESPONSE_SECONDS.
-    # This prevents timing-based email enumeration: an attacker measuring response
-    # latency cannot distinguish a found email from a missing one.
+    # This prevents timing-based email enumeration.
     _elapsed = time.monotonic() - _start
     _remaining = FORGOT_MIN_RESPONSE_SECONDS - _elapsed
     if _remaining > 0:
@@ -171,7 +182,8 @@ def reset_password(token):
     # Atomically consume the token — returns user_id if valid, None if not found / used / expired.
     user_id = TokenRepo.consume_token(token)
     if user_id is None:
-        return jsonify({"error": "Token invalid sau deja utilizat."}), 400
+        flash("Link de resetare invalid sau deja utilizat. Solicită unul nou.", "error")
+        return redirect(url_for('forgot_password'))
 
     AuthService.update_password(user_id, new_password)
     session.clear()
@@ -198,7 +210,8 @@ def ticket_management():
     priority = data.get('priority')
     
     TicketService.create_ticket(session['user_id'], title, description, priority, request.remote_addr)
-    return jsonify({"message": "Tichet creat cu succes."}), 201
+    flash("Tichet creat cu succes.", "success")
+    return redirect(url_for('ticket_management'))
 
 @app.route('/ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
@@ -209,15 +222,17 @@ def view_or_update_ticket(ticket_id):
         safe_ticket = OutputEncoding.sanitize_dict(ticket)
         return render_template('ticket_view.html', ticket=safe_ticket)
         
-    # POST - Update Status
+    # POST - Update Status (MANAGER only)
+    from werkzeug.exceptions import Forbidden
     if session['role'] != 'MANAGER':
-        return jsonify({"error": "Doar managerii pot actualiza statusul."}), 403
-        
+        raise Forbidden("Doar managerii pot actualiza statusul.")
+
     data = request.form if request.form else request.json
     status = data.get('status')
-    
+
     TicketService.update_status(ticket_id, status, session['user_id'], request.remote_addr)
-    return jsonify({"message": "Status actualizat cu succes."})
+    flash("Status actualizat cu succes.", "success")
+    return redirect(url_for('view_or_update_ticket', ticket_id=ticket_id))
 
 @app.route('/audit', methods=['GET'])
 @login_required
