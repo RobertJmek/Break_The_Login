@@ -17,8 +17,10 @@ def init_session_mgmt(app):
     # the session cookie is silently never sent over plain HTTP and every request appears
     # unauthenticated.
     # In production (DEBUG=false / unset) it is always True.
+    
     debug = os.getenv("DEBUG", "false").lower() == "true"
     cookie_secure = not debug
+    session_lifetime = int(os.getenv("SESSION_LIFETIME_MINUTES", "30"))
 
     app.config.update(
         # 1. Cookie Flags (Anti-XSS și Anti-CSRF la nivel de browser)
@@ -27,5 +29,5 @@ def init_session_mgmt(app):
         SESSION_COOKIE_SAMESITE='Lax',
 
         # 2. Token Expiry (Limităm fereastra de oportunitate a unui atacator)
-        PERMANENT_SESSION_LIFETIME=timedelta(minutes=30)
+        PERMANENT_SESSION_LIFETIME=timedelta(minutes=session_lifetime)
     )
