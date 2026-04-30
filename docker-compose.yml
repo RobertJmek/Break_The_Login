@@ -21,7 +21,7 @@ services:
     depends_on:
       - db
     volumes:
-      - ./src:/app/src # Asta ne permite să modificăm codul de pe Mac și să se actualizeze în container
+      - ./src:/app/src 
 
 volumes:
   postgres_data:
