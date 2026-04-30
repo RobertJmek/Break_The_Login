@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     ports:
-      - "5433:5433"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Aici încărcăm scriptul care creează tabelele automat la prima pornire
@@ -15,7 +15,7 @@ services:
   web:
     build: .
     ports:
-      - "5002:5002"
+      - "5002:5000"
     env_file:
       - .env
     depends_on:
