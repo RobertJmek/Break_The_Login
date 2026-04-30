@@ -20,7 +20,7 @@ def health_check():
         db_status = f"Eroare la conectarea DB: {str(e)}"
         
     return jsonify({
-        "status": "Deskly API v1 (Vulnerable) este online!",
+        "status": "AuthX API v1 (Vulnerable) este online!",
         "database_status": db_status
     }), 200
 
