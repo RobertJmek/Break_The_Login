@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Detalii Tichet</title>
+</head>
+
+<body>
+    <h1>Titlu: {{ ticket.titlu }}</h1>
+    
+    <div style="margin-bottom: 15px;">
+        <label><strong>ID Tichet:</strong></label><br>
+        <input type="text" value="{{ ticket.id }}" readonly style="width: 100%; padding: 5px; background: #eee; border: 1px solid #ccc;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label><strong>Status:</strong></label><br>
+        <input type="text" value="{{ ticket.status }}" readonly style="width: 100%; padding: 5px; background: #eee; border: 1px solid #ccc;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label><strong>Descriere (Vulnerabilă XSS):</strong></label><br>
+        <div style="padding: 10px; border: 1px solid #f00; background: #fff;">
+            {{ ticket.descriere | safe }}
+        </div>
+    </div>
+
+</body>
+
+</html>

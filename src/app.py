@@ -250,17 +250,15 @@ def view_ticket(ticket_id):
 
     # VULNERABILITATE MAJORĂ (Autorizare / IDOR):
     # Avem tichetul, știm cine este utilizatorul, dar NU verificăm dacă tichetul îi aparține!
-    # Codul sigur ar fi fost: if ticket[4] != user_id: return "Interzis", 403
     
-    return jsonify({
-        "vizitator_curent": email_presupus,
-        "date_tichet": {
-            "id": ticket[0],
-            "titlu": ticket[1],
-            "descriere": ticket[2],
-            "status": ticket[3]
-        }
-    }), 200
+    date_tichet = {
+        "id": ticket[0],
+        "titlu": ticket[1],
+        "descriere": ticket[2],
+        "status": ticket[3]
+    }
+    
+    return render_template('ticket_detail.html', ticket=date_tichet)
 
 # RUTA DE LOGOUT (Vulnerabilă la Session Hijacking)
 
