@@ -731,6 +731,128 @@ session.permanent = True   # Activează PERMANENT_SESSION_LIFETIME
 | 11 | Insecure Cookie Flags | A02:2021 | `HttpOnly=True`, `Secure=True`, `SameSite=Lax` | `session_mgmt.py` |
 | 12 | Predictable Reset Token | A02:2021 | HMAC-SHA256 + `secrets.token_urlsafe` + Single-use | `token_repo.py` |
 
+### 8.1. Ce ar fi diferit într-un mediu de producție
+
+| Aspect | Implementat în Lab | Producție (Recomandare) |
+|:---|:---|:---|
+| **Transport** | HTTP (dev) | HTTPS cu TLS 1.3 + HSTS |
+| **Secrets Management** | `.env` local | HashiCorp Vault / AWS Secrets Manager |
+| **Rate Limiting** | Flask-Limiter (memorie) | Redis-backed limiter (distribuit) |
+| **Audit Storage** | PostgreSQL (aceeași DB) | SIEM dedicat (Splunk, ELK) |
+| **Monitoring** | `docker logs` | Prometheus + Grafana + AlertManager |
+| **Dependency Scanning** | Manual (versiuni recente) | Dependabot / Snyk CI/CD pipeline |
+| **Penetration Testing** | Student manual (Burp/ZAP) | Pentest profesional + Bug Bounty |
+
+
+---
+
+## 9. AUDIT & LOGGING — Demonstrare Trasabilitate
+
+Sistemul de audit implementat în `src/security/audit_logging.py` asigură că **toate acțiunile critice** efectuate în aplicație sunt înregistrate persistent în tabela `audit_logs` din PostgreSQL, împreună cu contextul de securitate complet (user, IP, timestamp, resursă afectată).
+
+### 9.1. Arhitectura Sistemului de Audit
+
+```python
+# src/security/audit_logging.py
+class AuditLogging:
+    @staticmethod
+    def log(user_id: int, action: str, resource: str,
+            resource_id: int | None = None, ip_address: str | None = None):
+        """
+        Inserează sincron în audit_logs.
+        Nu propagă excepții — o eroare de audit NU trebuie să blocheze fluxul principal.
+        """
+        try:
+            AuditRepo.insert(user_id, action, resource, resource_id, ip_address)
+        except Exception as e:
+            logging.error(f"[AUDIT FAILURE] Nu s-a putut loga acțiunea: {e}")
+```
+
+**Schema tabelei `audit_logs`:**
+
+| Câmp | Tip | Descriere |
+|:---|:---|:---|
+| `id` | SERIAL PK | Identificator unic auto-incrementat |
+| `user_id` | INTEGER FK | Utilizatorul care a efectuat acțiunea |
+| `action` | ENUM | `LOGIN`, `LOGOUT`, `FAILED_LOGIN`, `CREATE`, `UPDATE`, `DELETE`, `PASSWORD_RESET_REQUEST`, `PASSWORD_RESET_SUCCESS` |
+| `resource` | ENUM | `USER`, `TICKET` |
+| `resource_id` | INTEGER | ID-ul resursei afectate (ex: ID tichet) |
+| `timestamp` | TIMESTAMPTZ | Momentul exact al evenimentului (UTC) |
+| `ip_address` | INET | Adresa IP a clientului |
+
+### 9.2. Evenimente Auditate
+
+| Eveniment | Declanșator | Acțiune Logată |
+|:---|:---|:---|
+| Login reușit | `POST /login` → autentificare OK | `LOGIN` / `USER` |
+| Login eșuat | `POST /login` → credențiale invalide | `FAILED_LOGIN` / `USER` |
+| Logout | `GET /logout` | `LOGOUT` / `USER` |
+| Creare tichet | `POST /ticket` | `CREATE` / `TICKET` |
+| Actualizare tichet | `POST /ticket/<id>` | `UPDATE` / `TICKET` |
+| Solicitare reset parolă | `POST /forgot` | `PASSWORD_RESET_REQUEST` / `USER` |
+| Resetare parolă | `POST /reset` | `PASSWORD_RESET_SUCCESS` / `USER` |
+
+### 9.3. Demonstrare Trasabilitate — Vizualizare Audit Logs (Manager Only)
+
+Ruta `/audit` este protejată cu decoratorul `@manager_required` din `authz.py`. Un utilizator cu rolul `ANALYST` sau `USER` primește `403 Forbidden`. Logurile sunt afișate paginate (25/pagină), sortate descrescător după timestamp.
+
+```python
+# src/app.py — Ruta de audit, Manager Only
+@app.route('/audit')
+@login_required
+@manager_required  # RBAC: doar MANAGER poate vedea logurile
+def audit_logs():
+    page = request.args.get('page', 1, type=int)
+    logs, total = AuditService.get_paginated_logs(page=page, per_page=25)
+    safe_logs = OutputEncoding.sanitize_dict({"logs": logs})['logs']
+    return render_template('audit_logs.html', logs=safe_logs, ...)
+```
+
+<img width="1207" height="950" alt="image" src="https://github.com/user-attachments/assets/1f0b5d97-d54c-457e-9a1a-90cf076503c6" />
+
+<img width="1205" height="940" alt="image" src="https://github.com/user-attachments/assets/1c9bf208-0776-422c-9943-14cb1e87baf7" />
+
+
+### 9.4. Trasabilitate în Scenariul de Atac
+
+Sistemul de audit permite reconstruirea completă a unui incident de securitate. Exemplu — scenariul unui atac de brute force:
+
+| Timestamp | User ID | IP | Acțiune | Resursă |
+|:---|:---|:---|:---|:---|
+| 2026-04-30 22:01:03 | NULL | 192.168.1.50 | `FAILED_LOGIN` | USER |
+| 2026-04-30 22:01:04 | NULL | 192.168.1.50 | `FAILED_LOGIN` | USER |
+| 2026-04-30 22:01:05 | NULL | 192.168.1.50 | `FAILED_LOGIN` | USER |
+| 2026-04-30 22:01:06 | NULL | 192.168.1.50 | `FAILED_LOGIN` | USER |
+| 2026-04-30 22:01:07 | NULL | 192.168.1.50 | `FAILED_LOGIN` | USER |
+| 2026-04-30 22:01:08 | — | 192.168.1.50 | *Cont blocat (lockout 15 min)* | — |
+
+**Valoarea forensică:** Un administrator poate identifica rapid IP-ul sursă, intervalul de timp și contul țintă, fără acces la logurile raw ale serverului.
+
+### 9.5. Loguri de Securitate în Container
+
+Pe lângă audit_logs din DB, aplicația scrie și în stdout-ul containerului prin modulul `logging` al Python. Logurile de securitate includ alerte de IDOR, rate limiting și erori interne:
+
+```bash
+# Vizualizare live a logurilor de securitate
+docker logs <container_id> --follow | grep -E "(SECURITY|ERROR|WARNING)"
+```
+
+```
+[WARNING] SECURITY ALERT: IDOR Attempt — user_id=3 la ticket_id=1 (owner_id=1)
+[WARNING] SECURITY ALERT: Cont blocat temporar — email=user@deskly.ro (5 incercari)
+[ERROR] [CSRF] Token invalid la POST /ticket — IP: 192.168.1.100
+```
+
+---
+
+## 10. CONCLUZII — Lecții Învățate
+
+Cel mai valoros insight al acestui proiect a fost conștientizarea **perspectivei duale developer ↔ pentester**: atunci când scriem cod, ne imaginăm un utilizator care folosește aplicația conform documentației; atacatorul, în schimb, tratează fiecare câmp de input ca pe un vector de atac potențial. Adoptarea acestei mentalități — *„cum poate fi abuzat acest endpoint?"* — încă din faza de design este esența **Secure by Design**. 
+
+Sincer sa fiu, nu ma gandeam intial cat de greu poate fi sa gandesti o aplicatie de la 0 care sa fie si sigura. 
+
+In final, proiectul a demonstrat ca securitatea nu este un add-on, ci o componentă arhitecturală esențială care, atunci cand este implementată corect, poate transforma o aplicație vulnerabilă intr-un sistem robust si sigur. 
+
 ---
 
 ## Referințe
@@ -741,3 +863,7 @@ session.permanent = True   # Activează PERMANENT_SESSION_LIFETIME
 4. [OWASP A03:2021 — Injection](https://owasp.org/Top10/A03_2021-Injection/)
 5. [OWASP — SQL Injection Attacks](https://owasp.org/www-community/attacks/SQL_Injection)
 6. [OWASP Cheat Sheet — SQL Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
+7. [OWASP A07:2021 — Identification and Authentication Failures](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/)
+8. [OWASP A01:2021 — Broken Access Control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)
+9. [OWASP Cheat Sheet — Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+10. [OWASP Cheat Sheet — Logging & Monitoring](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
