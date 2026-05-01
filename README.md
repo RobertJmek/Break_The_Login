@@ -808,8 +808,10 @@ def audit_logs():
     return render_template('audit_logs.html', logs=safe_logs, ...)
 ```
 
-<!-- SCREENSHOT: Audit Logs - Interfața Manager cu lista de evenimente -->
-<!-- SCREENSHOT: Audit Logs - ANALYST primește 403 Forbidden la /audit -->
+<img width="1207" height="950" alt="image" src="https://github.com/user-attachments/assets/1f0b5d97-d54c-457e-9a1a-90cf076503c6" />
+
+<img width="1205" height="940" alt="image" src="https://github.com/user-attachments/assets/1c9bf208-0776-422c-9943-14cb1e87baf7" />
+
 
 ### 9.4. Trasabilitate în Scenariul de Atac
 
