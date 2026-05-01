@@ -207,6 +207,20 @@ docker logs <container_id>
 - `--build` — să fim siguri că facem build la ultima versiune de cod.
 - `-d` — detached mode.
 
+<img width="1325" height="749" alt="image" src="https://github.com/user-attachments/assets/16b30d4c-bb76-4407-b2fb-3caf9eeff303" />
+
+<img width="1321" height="909" alt="image" src="https://github.com/user-attachments/assets/c296fb6b-3ed4-402e-a7d8-98a08b173b3e" />
+
+<img width="1117" height="861" alt="image" src="https://github.com/user-attachments/assets/47eadfb0-8686-44a7-9a06-df138c37cf56" />
+
+<img width="1200" height="892" alt="image" src="https://github.com/user-attachments/assets/e3bc7e7d-ef3e-4793-aa42-bc923e7bf3cf" />
+
+
+
+
+
+
+
 ---
 
 ## 5. SCHEMA BAZEI DE DATE (ERD)
@@ -312,17 +326,23 @@ Aplicația AuthX v0 a fost concepută inițial cu securitatea **neglijată în m
 
 **PoC — Password Bypass:** Cel mai interesant atac este password bypass, prin care ne putem conecta cu orice user existent dacă știm că acesta există (by email).
 
+<img width="1190" height="822" alt="image" src="https://github.com/user-attachments/assets/7ef72f1c-9454-4afe-bc98-6dd657085251" />
+
+
 În câmpul de email introducem: `email@domain.com' --`
 
 Și în câmpul de parolă orice string (ex: `0`).
 
-<!-- SCREENSHOT: SQLi login bypass - Burp request -->
-<!-- SCREENSHOT: SQLi login bypass - Succes în browser -->
-<!-- SCREENSHOT: SQLi login bypass - Container logs 200 -->
+<img width="986" height="849" alt="image" src="https://github.com/user-attachments/assets/33d5bab5-eedf-4bc9-a892-d00ef650f8c6" /> 
+
+<img width="991" height="687" alt="image" src="https://github.com/user-attachments/assets/9e7fe779-f1a6-460e-9eb3-c19f88845f0f" /> 
+
+<img width="988" height="775" alt="image" src="https://github.com/user-attachments/assets/8cf226a3-a717-4d1f-8b17-cb737ee48021" />
 
 **Impact:** Un atacator poate impersona orice user din baza de date. Prin SQL Injection pot fi rulate orice comenzi SQL — un atacator poate executa `DROP TABLE` sau șterge toată baza de date.
 
 **Fix — Parameterized Queries** [[6]](#referințe):
+
 
 Parcursul unui request în aplicația securizată: **Backend API** → `AuthService` (authn.py) → `UserRepo` (user_repo.py) → **PostgreSQL**
 
@@ -338,13 +358,21 @@ cursor.execute(query, (email,))
 
 Folosim **parameterized queries** (`%s`), ceea ce înseamnă că inputul ajunge în baza de date ca un simplu șir de caractere, fără să poată fi executat ca instrucțiune SQL.
 
-<!-- SCREENSHOT: Cod versiune vulnerabilă vs securizată -->
+
+<img width="985" height="679" alt="image" src="https://github.com/user-attachments/assets/8cd0e420-98ed-4f6a-a625-459f59259f08" />
+
+VS
+
+<img width="987" height="768" alt="image" src="https://github.com/user-attachments/assets/11ee788f-f748-4034-94d8-5028231b8c47" />
+
 
 **Re-Test:** Reîncercăm atacul modificând parola din request în Burp (deoarece în versiunea securizată avem validare în frontend):
 
-<!-- SCREENSHOT: Re-test Burp request cu payload SQLi -->
-<!-- SCREENSHOT: Re-test rezultat - "Credențiale invalide" -->
-<!-- SCREENSHOT: Re-test container logs - 302 redirect -->
+<img width="1000" height="775" alt="image" src="https://github.com/user-attachments/assets/dd138d25-df66-4f34-aa55-e59264d37c2f" /> 
+
+<img width="986" height="764" alt="image" src="https://github.com/user-attachments/assets/04f0b24b-a12a-4732-9342-b2ef750a6a15" />
+
+<img width="989" height="757" alt="image" src="https://github.com/user-attachments/assets/4f77a2d8-a347-4021-85b8-0d6b2ce97ab3" />
 
 ---
 
@@ -360,7 +388,10 @@ Folosim **parameterized queries** (`%s`), ceea ce înseamnă că inputul ajunge 
 
 Rezultat vizibil: Eroarea brută `psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type integer: "2'abc"...` este afișată pe ecran, însoțită de calea fișierelor de pe server (ex: `/app/src/app.py`).
 
-<!-- SCREENSHOT: Information Exposure - Stack trace vizibil în browser -->
+<img width="605" height="584" alt="image" src="https://github.com/user-attachments/assets/a01ca6ad-8494-4ee3-bb98-3df5a9d2e0d7" />
+
+<img width="1208" height="953" alt="Screenshot 2026-04-30 at 16 54 11" src="https://github.com/user-attachments/assets/ec11e8ad-b248-4760-81f7-33cd7e664ec5" />
+
 
 **Impact:**
 - **Dezvăluirea Tehnologiei:** Atacatorul află că backend-ul folosește Python (psycopg2) și PostgreSQL.
@@ -388,9 +419,6 @@ except OperationalError:
     raise ConnectionError("Baza de date este indisponibilă.")
 ```
 
-<!-- SCREENSHOT: Fix Information Exposure - Cod securizat -->
-<!-- SCREENSHOT: Re-test - Mesaj generic în browser -->
-
 ---
 
 ### 7.3. User Enumeration + Weak Session Token + Clear Token Value + XSS + CSRF
@@ -407,8 +435,11 @@ Aceste cinci vulnerabilități sunt prezentate împreună deoarece se înlănțu
 
 **Impact:** Deși nu oferă acces direct, această vulnerabilitate facilitează faza de Reconnaissance. Un atacator poate folosi o listă de mii de adrese de email și, analizând răspunsurile serverului, va extrage o listă exactă de utilizatori legitimi, pe care ulterior va lansa atacuri de tip Brute Force sau Phishing.
 
-<!-- SCREENSHOT: User Enumeration - Mesaj diferit pentru email inexistent -->
-<!-- SCREENSHOT: User Enumeration - Mesaj diferit pentru parolă greșită -->
+<img width="1222" height="955" alt="image" src="https://github.com/user-attachments/assets/adf5f65b-58ed-4f6c-b6e7-aef6ad0654cb" />
+
+
+<img width="1204" height="944" alt="image" src="https://github.com/user-attachments/assets/d162663b-aea7-49ff-b75a-e07eb129ed73" />
+
 
 **Fix — Constant-time responses & Generic messages:**
 
@@ -433,6 +464,14 @@ if _remaining > 0:
 
 flash("Dacă email-ul există, s-a trimis un link de resetare.", "info")  # Mesaj generic
 ```
+<img width="1214" height="941" alt="image" src="https://github.com/user-attachments/assets/f06eb7af-a5da-4119-88ab-aa3a0994d739" />
+
+<img width="1208" height="945" alt="image" src="https://github.com/user-attachments/assets/8688f8e9-9987-4fa7-8234-68f8b622dd3d" />
+
+<img width="1214" height="949" alt="image" src="https://github.com/user-attachments/assets/7bf886cd-e13b-45c4-9960-c46126a94593" />
+
+<img width="1211" height="942" alt="image" src="https://github.com/user-attachments/assets/1f0029ae-e468-4880-922b-53677a2da6d2" />
+
 
 #### 7.3.2. Session Management Deficitar (Token în Clar și Previzibil)
 
@@ -444,7 +483,8 @@ flash("Dacă email-ul există, s-a trimis un link de resetare.", "info")  # Mesa
 
 **Impact:** Escaladarea privilegiilor (Privilege Escalation) și Session Hijacking. Un utilizator malițios poate modifica valoarea cookie-ului din browser (Developer Tools sau Burp Suite) cu email-ul unui administrator. Serverul, neavând un mecanism de a verifica integritatea token-ului, va acorda acces complet.
 
-<!-- SCREENSHOT: Cookie auth_cookie vizibil în DevTools/Burp -->
+<img width="1194" height="944" alt="image" src="https://github.com/user-attachments/assets/8c3ffc94-198f-4982-9316-9d17e809c909" />
+
 
 **Fix — Flask Signed Sessions + Secure Cookie Flags:**
 
@@ -470,8 +510,8 @@ Cookie-ul `auth_cookie` a fost **eliminat complet**. Sesiunea Flask este acum se
 
 **Impact:** Când un manager deschide acel tichet, browserul său va executa codul JavaScript malițios în fundal. Atacatorul poate fura cookie-urile administratorului (dacă nu au flag-ul HttpOnly), poate face acțiuni în numele acestuia sau poate redirecționa pagina.
 
-<!-- SCREENSHOT: XSS - Payload injectat în descriere tichet -->
-<!-- SCREENSHOT: XSS - alert() executat în browser -->
+<img width="1207" height="946" alt="image" src="https://github.com/user-attachments/assets/25c50818-a495-4281-8fd1-0e2187864cb8" />
+
 
 **Fix — Output Encoding (Defense in Depth):**
 
@@ -508,7 +548,8 @@ return render_template('ticket_list.html', tickets=safe_tickets)
 
 **Impact:** Un atacator poate crea o pagină web malițioasă externă (ex: `atacator.ro/poze-pisici.html`) care conține un formular invizibil ce face un POST către `http://localhost:5000/ticket`. Dacă un utilizator Deskly autentificat accesează acea pagină, browserul va executa acțiunea fără ca victima să își dea seama.
 
-<!-- SCREENSHOT: CSRF - Lipsa token-ului CSRF în formulare (v0) -->
+<img width="1312" height="969" alt="image" src="https://github.com/user-attachments/assets/d3ce6e09-a9fc-4e4c-9a76-3fdf58c1bbeb" />
+
 
 **Fix — Flask-WTF CSRF Tokens:**
 
@@ -528,7 +569,8 @@ def init_csrf(app):
 </form>
 ```
 
-<!-- SCREENSHOT: Fix CSRF - Token prezent în formulare (v1) -->
+<img width="1314" height="977" alt="image" src="https://github.com/user-attachments/assets/9ee3e179-1541-4957-92d4-ddc4a4a6253c" />
+
 
 #### Tabel Rezumat Fix-uri (7.3)
 
@@ -699,4 +741,3 @@ session.permanent = True   # Activează PERMANENT_SESSION_LIFETIME
 4. [OWASP A03:2021 — Injection](https://owasp.org/Top10/A03_2021-Injection/)
 5. [OWASP — SQL Injection Attacks](https://owasp.org/www-community/attacks/SQL_Injection)
 6. [OWASP Cheat Sheet — SQL Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
-
